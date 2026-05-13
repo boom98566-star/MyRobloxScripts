@@ -3,6 +3,7 @@ local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 local VirtualUser = game:GetService("VirtualUser")
 local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
 local LocalPlayer = Players.LocalPlayer
 
 -- إنـشـاء الـنـافـذة الـرئـيـسـيـة
@@ -17,7 +18,7 @@ local Window = Rayfield:CreateWindow({
 
 Rayfield:Notify({
    Title = "اكـتـمـل الـحـقـن",
-   Content = "جـاهـز سـيـدي الـمـطـور، تـم تـجـهـيـز أقـوى سـكـريـبـت لـمـاب سـيـلـر بـيـس 🔥",
+   Content = "جـاهـز سـيـدي الـمـطـور، تـم إصـلاح كـل الـمـشـاكـل 🔥",
    Duration = 5,
    Image = 4483345998,
 })
@@ -29,7 +30,7 @@ local FarmTab = Window:CreateTab("الـفـارم والـمـهـام", 448334
 local ItemsTab = Window:CreateTab("الـشـظـايـا والـصـنـاديـق", 4483345998)
 local StatsTab = Window:CreateTab("الـتـطـويـر الـتـلـقـائـي", 4483345998)
 local EspTab = Window:CreateTab("الـكـشـف (ESP)", 4483345998)
-local PlayerTab = Window:CreateTab("إعـدادات الـلـاعـب", 4483345998)
+local PlayerTab = Window:CreateTab("إعـدادات الـلاعـب", 4483345998)
 
 -- مـتـغـيـرات الـتـشـغـيـل
 _G.AutoQuest = false
@@ -42,13 +43,14 @@ _G.AutoChests = false
 _G.AutoMelee = false
 _G.AutoDefense = false
 _G.AutoSword = false
+_G.EspToggle = false
 
 -- دالـة الـانـتـقـال الـسـلـس والـآمـن
 local function TweenTo(targetCFrame)
     local hrp = LocalPlayer.Character and LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
     if hrp then
         local distance = (hrp.Position - targetCFrame.Position).Magnitude
-        local speed = 200
+        local speed = 250
         local tweenInfo = TweenInfo.new(distance / speed, Enum.EasingStyle.Linear)
         local tween = TweenService:Create(hrp, tweenInfo, {CFrame = targetCFrame})
         tween:Play()
@@ -69,35 +71,52 @@ FarmTab:CreateToggle({
 })
 
 FarmTab:CreateToggle({
-   Name = "تـلـفـيـل تـلـقـائـي (Auto Farm) ⚔️",
+   Name = "تـطـويـر تـلـقـائـي (Auto Farm) ⚔️",
    CurrentValue = false,
    Flag = "AutoFarmToggle",
    Callback = function(Value)
       _G.AutoFarm = Value
-      task.spawn(function()
-          while _G.AutoFarm do
-              pcall(function()
-                  local char = LocalPlayer.Character
-                  local hrp = char and char:FindFirstChild("HumanoidRootPart")
-                  if hrp then
-                      -- جـلـب أقـرب وحـش فـي الـمـاب لـتـلـفـيـل الـحـسـاب
-                      for _, enemy in pairs(workspace:GetDescendants()) do
-                          if enemy:FindFirstChild("Humanoid") and enemy.Humanoid.Health > 0 and enemy.Name ~= LocalPlayer.Name then
-                              TweenTo(enemy.HumanoidRootPart.CFrame * CFrame.new(0, 0, 3))
-                              
-                              -- مـحـاكـاة الـضـرب
-                              VirtualUser:CaptureController()
-                              VirtualUser:ClickButton1(Vector2.new(0,0))
-                              break
-                          end
-                      end
-                  end
-              end)
-              task.wait(0.5)
-          end
-      end)
    end,
 })
+
+-- حـلـقـة الـفـارم لـضـمـان عـدم تـعـلـيـق الـلـعـبـة
+task.spawn(function()
+    while task.wait() do
+        if _G.AutoFarm then
+            pcall(function()
+                local closest = nil
+                local dist = math.huge
+                
+                -- الـبـحـث عـن أقـرب وحـش
+                for _, v in pairs(workspace:GetDescendants()) do
+                    if v:IsA("Model") and v:FindFirstChild("Humanoid") and v.Humanoid.Health > 0 and v.Name ~= LocalPlayer.Name and not Players:GetPlayerFromCharacter(v) then
+                        local hrp = v:FindFirstChild("HumanoidRootPart")
+                        if hrp then
+                            local d = (LocalPlayer.Character.HumanoidRootPart.Position - hrp.Position).Magnitude
+                            if d < dist then
+                                dist = d
+                                closest = v
+                            end
+                        end
+                    end
+                end
+                
+                if closest and closest:FindFirstChild("HumanoidRootPart") then
+                    local targetCFrame = closest.HumanoidRootPart.CFrame * CFrame.new(0, 5, 0) -- الـانـتـقـال فـوق الـوحـش
+                    TweenTo(targetCFrame)
+                    
+                    local char = LocalPlayer.Character
+                    local tool = char:FindFirstChildOfClass("Tool") or LocalPlayer.Backpack:FindFirstChildOfClass("Tool")
+                    if tool then
+                        char.Humanoid:EquipTool(tool)
+                        VirtualUser:CaptureController()
+                        VirtualUser:ClickButton1(Vector2.new(0,0))
+                    end
+                end
+            end)
+        end
+    end
+end)
 
 FarmTab:CreateToggle({
    Name = "هـجـوم سـريـع (Fast Attack) ⚡",
@@ -128,7 +147,6 @@ FarmTab:CreateToggle({
       task.spawn(function()
           while _G.AutoHaki do
               pcall(function()
-                  -- يـفـعـل الـهـاكـي إذا لـم يـكـن مـفـعـلاً لا يـوجـد خـطـر
                   game:GetService("ReplicatedStorage"):WaitForChild("Events"):WaitForChild("Haki"):FireServer()
               end)
               task.wait(10)
@@ -160,10 +178,10 @@ FarmTab:CreateToggle({
 })
 
 -- ==========================================
--- الـشـظـايـا والـصـنـاديـق (لـلـعـالـم الـثـانـي)
+-- الـشـظـايـا والـصـنـاديـق
 -- ==========================================
 ItemsTab:CreateToggle({
-   Name = "تـجـمـيـع الـشـظـايـا لـلـعـالـم الـثـانـي (Ancient Fragments) 💎",
+   Name = "تـجـمـيـع الـشـظـايـا لـلـعـالـم الـثـانـي 💎",
    CurrentValue = false,
    Flag = "AutoFragmentsToggle",
    Callback = function(Value)
@@ -212,7 +230,7 @@ ItemsTab:CreateToggle({
 })
 
 -- ==========================================
--- الـتـطـويـر الـتـلـقـائـي (Stats)
+-- الـتـطـويـر الـتـلـقـائـي
 -- ==========================================
 StatsTab:CreateToggle({
    Name = "تـطـويـر قـوة الـضـرب (Melee) 👊",
@@ -263,34 +281,58 @@ StatsTab:CreateToggle({
 -- الـكـشـف (ESP)
 -- ==========================================
 EspTab:CreateToggle({
-   Name = "كـشـف الـلـاعـبـيـن (ESP Players) 👤",
+   Name = "رؤيـة الـلاعـبـيـن واسـمـائـهـم (ESP) 👤",
    CurrentValue = false,
    Flag = "EspToggle",
    Callback = function(Value)
-       for _, p in pairs(Players:GetPlayers()) do
-           if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("Head") then
-               if Value then
-                   local bg = Instance.new("BillboardGui", p.Character.Head)
-                   bg.Name = "ESP"
-                   bg.AlwaysOnTop = true
-                   bg.Size = UDim2.new(0, 100, 0, 50)
-                   local text = Instance.new("TextLabel", bg)
-                   text.Size = UDim2.new(1, 0, 1, 0)
-                   text.Text = p.Name
-                   text.TextColor3 = Color3.new(1, 0, 0)
-                   text.BackgroundTransparency = 1
-               else
-                   if p.Character.Head:FindFirstChild("ESP") then
-                       p.Character.Head.ESP:Destroy()
-                   end
-               end
-           end
-       end
+       _G.EspToggle = Value
    end,
 })
 
+-- تـحـديـث الـكـشـف بـاسـتـمـرار لـيـتـحـرك مـع الـلاعـب
+task.spawn(function()
+    RunService.RenderStepped:Connect(function()
+        if _G.EspToggle then
+            for _, p in pairs(Players:GetPlayers()) do
+                if p ~= LocalPlayer and p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                    if not p.Character:FindFirstChild("ESP_High") then
+                        local h = Instance.new("Highlight")
+                        h.Name = "ESP_High"
+                        h.Parent = p.Character
+                        h.FillColor = Color3.new(1, 0, 0)
+                        h.OutlineColor = Color3.new(1, 1, 1)
+                    end
+                    if not p.Character:FindFirstChild("ESP_Text") then
+                        local bg = Instance.new("BillboardGui")
+                        bg.Name = "ESP_Text"
+                        bg.Parent = p.Character
+                        bg.Adornee = p.Character:FindFirstChild("Head") or p.Character.HumanoidRootPart
+                        bg.AlwaysOnTop = true
+                        bg.Size = UDim2.new(0, 100, 0, 50)
+                        bg.ExtentsOffset = Vector3.new(0, 2, 0)
+                        
+                        local text = Instance.new("TextLabel", bg)
+                        text.Size = UDim2.new(1, 0, 1, 0)
+                        text.Text = p.Name
+                        text.TextColor3 = Color3.new(1, 0, 0)
+                        text.BackgroundTransparency = 1
+                        text.TextScaled = true
+                    end
+                end
+            end
+        else
+            for _, p in pairs(Players:GetPlayers()) do
+                if p.Character then
+                    if p.Character:FindFirstChild("ESP_High") then p.Character.ESP_High:Destroy() end
+                    if p.Character:FindFirstChild("ESP_Text") then p.Character.ESP_Text:Destroy() end
+                end
+            end
+        end
+    end)
+end)
+
 -- ==========================================
--- إعـدادات الـلـاعـب
+-- إعـدادات الـلاعـب
 -- ==========================================
 PlayerTab:CreateSlider({
    Name = "سـرعـة الـمـشـي ⚡",
