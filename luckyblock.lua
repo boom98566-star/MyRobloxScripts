@@ -8,7 +8,7 @@ local Window = Rayfield:CreateWindow({
    LoadingTitle = "جـاري حـقـن الـسـكـريـبـت...",
    LoadingSubtitle = "تـم الـتـطـويـر بـواسـطـة The Architect",
    ConfigurationSaving = {
-      Enabled = false -- تـم إيـقـافـهـا لـتـجـنـب تـعـلـيـق الـواجـهـة فـي الـمـوبـايـل
+      Enabled = false 
    },
    Discord = {
       Enabled = false,
@@ -24,16 +24,15 @@ local PlayerTab = Window:CreateTab("إعـدادات الـلـاعـب", 448334
 _G.AutoTrain = false
 _G.AutoKick = false
 
--- مـيـزة الـتـدريـب بـمـحـاكـاة حـقـيـقـيـة 100%
+-- مـيـزة الـتـدريـب الـمـعـدلـة (نـزلـة كـامـلـة لـضـمـان الاحـتـسـاب)
 MainTab:CreateToggle({
-   Name = "تـدريـب تـلـقـائـي قـوي 💪",
+   Name = "تـدريـب تـلـقـائـي (نـزلـة كـامـلـة) 💪",
    CurrentValue = false,
    Flag = "AutoTrainToggle",
    Callback = function(Value)
       _G.AutoTrain = Value
       task.spawn(function()
           while _G.AutoTrain do
-              task.wait(0.1)
               local player = game.Players.LocalPlayer
               local char = player.Character or player.CharacterAdded:Wait()
               local tool = char:FindFirstChildOfClass("Tool") or player.Backpack:FindFirstChildOfClass("Tool")
@@ -42,57 +41,58 @@ MainTab:CreateToggle({
                   char.Humanoid:EquipTool(tool)
                   tool:Activate()
                   
-                  -- مـحـاكـاة ضـغـطـة إصـبـع حـقـيـقـيـة عـلـى الـشـاشـة
                   VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
-                  task.wait(0.05)
+                  task.wait(0.1)
                   VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
                   
-                  -- إجـبـار الـسـيـرفـر عـلـى احـتـسـاب الـقـوة عـبـر الـأحـداث
-                  for _, v in pairs(game.ReplicatedStorage:GetDescendants()) do
-                      if v:IsA("RemoteEvent") and (v.Name:lower():find("click") or v.Name:lower():find("train") or v.Name:lower():find("add") or v.Name:lower():find("swing")) then
-                          pcall(function() v:FireServer() end)
-                      end
-                  end
+                  -- انـتـظـار ثـانـيـة ونـصـف لـيـكـمـل الـلـاعـب نـزلـة الـتـدريـب الـكـامـلـة
+                  task.wait(1.5)
+              else
+                  task.wait(0.5)
               end
           end
       end)
    end,
 })
 
--- مـيـزة الـتـجـمـيـع والـركـل
+-- مـيـزة الـتـجـمـيـع الـمـعـدلـة (شـحـن الـركـلـة وانـتـظـار الـحـيـوان)
 MainTab:CreateToggle({
-   Name = "تـجـمـيـع وركـل تـلـقـائـي ⚽",
+   Name = "تـجـمـيـع وركـل (قـوي + انـتـظـار) ⚽",
    CurrentValue = false,
    Flag = "AutoKickToggle",
    Callback = function(Value)
       _G.AutoKick = Value
       task.spawn(function()
           while _G.AutoKick do
-              task.wait(0.3)
               local player = game.Players.LocalPlayer
               local char = player.Character or player.CharacterAdded:Wait()
               local hrp = char:FindFirstChild("HumanoidRootPart")
               
               if hrp then
+                  local foundBlock = false
                   for _, v in pairs(workspace:GetDescendants()) do
                       if v:IsA("Part") and (v.Name:lower():find("block") or v.Name:lower():find("lucky") or v.Name:lower():find("kick")) then
-                          -- الـانـتـقـال أمـام الـصـنـدوق
-                          hrp.CFrame = v.CFrame * CFrame.new(0, 0, 3)
-                          task.wait(0.1)
+                          foundBlock = true
                           
-                          -- الـلـمـس الـوهـمـي
-                          pcall(function()
-                              firetouchinterest(hrp, v, 0)
-                              firetouchinterest(hrp, v, 1)
-                          end)
+                          -- الانـتـقـال أمـام الـصـنـدوق بـمـسـافـة مـنـاسـبـة
+                          hrp.CFrame = v.CFrame * CFrame.new(0, 0, 4)
+                          task.wait(0.5) -- انـتـظـار لـلاسـتـقـرار
                           
-                          -- الـضـرب لـكـسـر الـصـنـدوق
+                          -- شـحـن الـركـلـة (الـاسـتـمـرار بـالـضـغـط لـمـدة 1.2 ثـانـيـة לـتـصـبـح قـويـة أو مـمـتـازة)
                           VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
-                          task.wait(0.05)
+                          task.wait(1.2) 
                           VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+                          
+                          -- انـتـظـار 3 ثـوانٍ حـتـى يـذهـب الـحـيـوان ويـجـمـع الـمـكـافـآت ويـعـود
+                          task.wait(3) 
                           break 
                       end
                   end
+                  if not foundBlock then
+                      task.wait(1)
+                  end
+              else
+                  task.wait(1)
               end
           end
       end)
@@ -104,6 +104,32 @@ PlayerTab:CreateSlider({
    Range = {16, 250},
    Increment = 1,
    CurrentValue = 16,
+   Flag = "SpeedSlider",
+   Callback = function(Value)
+      game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = Value
+   end,
+})
+
+PlayerTab:CreateSlider({
+   Name = "قـوة الـقـفـز 🦘",
+   Range = {50, 300},
+   Increment = 1,
+   CurrentValue = 50,
+   Flag = "JumpSlider",
+   Callback = function(Value)
+      game.Players.LocalPlayer.Character.Humanoid.JumpPower = Value
+   end,
+})
+
+-- تـنـبـيـه اكـتـمـال الـحـقـن
+Rayfield:Notify({
+   Title = "اكتمل الـحـقـن",
+   Content = "تـم تـعـديـل نـظـام الـتـدريـب وشـحـن الـركـلـة مـع انـتـظـار الـحـيـوان 🔥",
+   Duration = 5,
+   Image = 4483345998,
+})
+
+Rayfield:LoadConfiguration()
    Flag = "SpeedSlider",
    Callback = function(Value)
       game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = Value
