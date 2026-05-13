@@ -1,5 +1,6 @@
 -- تـحـمـيـل مـكـتـبـة Rayfield الأقـوى لـلـمـوبـايـل
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+local VirtualUser = game:GetService("VirtualUser")
 
 -- إنـشـاء الـنـافـذة الـرئـيـسـيـة
 local Window = Rayfield:CreateWindow({
@@ -25,24 +26,62 @@ local PlayerTab = Window:CreateTab("إعـدادات الـلـاعـب", 448334
 
 -- مـتـغـيـرات الـتـشـغـيـل
 _G.AutoTrain = false
+_G.AutoKick = false
 
--- مـيـزة الـتـدريـب الـتـلـقـائـي (لـزيـادة قـوة الـركـل)
+-- مـيـزة الـتـدريـب الـتـلـقـائـي (مـع مـحـاكـاة نـقـر حـقـيـقـيـة)
 MainTab:CreateToggle({
-   Name = "تـدريـب تـلـقـائـي (Auto Lift Weights) 💪",
+   Name = "تـدريـب تـلـقـائـي وحـقـيـقـي 💪",
    CurrentValue = false,
    Flag = "AutoTrainToggle",
    Callback = function(Value)
       _G.AutoTrain = Value
       task.spawn(function()
           while _G.AutoTrain do
-              task.wait(0.1)
+              task.wait(0.2) -- تـأخـيـر بـسـيـط لـكـي يـسـجـل الـخـادم الـنـقـاط
               local player = game.Players.LocalPlayer
               local char = player.Character or player.CharacterAdded:Wait()
-              -- الـبـحـث عـن أداة الـتـدريـب فـي الـحـقـيـبـة أو يـد الـلـاعـب
+              
               local tool = char:FindFirstChildOfClass("Tool") or player.Backpack:FindFirstChildOfClass("Tool")
               if tool then
                   char.Humanoid:EquipTool(tool)
                   tool:Activate()
+                  -- مـحـاكـاة نـقـرة شـاشـة لـضـمـان حـسـاب الـقـوة
+                  VirtualUser:CaptureController()
+                  VirtualUser:ClickButton1(Vector2.new(0,0))
+              end
+          end
+      end)
+   end,
+})
+
+-- مـيـزة الـتـجـمـيـع والـركـل الـتـلـقـائـي (انـتـقـال ونـقـر)
+MainTab:CreateToggle({
+   Name = "تـجـمـيـع وركـل تـلـقـائـي ⚽",
+   CurrentValue = false,
+   Flag = "AutoKickToggle",
+   Callback = function(Value)
+      _G.AutoKick = Value
+      task.spawn(function()
+          while _G.AutoKick do
+              task.wait(0.5)
+              local player = game.Players.LocalPlayer
+              local char = player.Character or player.CharacterAdded:Wait()
+              local hrp = char:FindFirstChild("HumanoidRootPart")
+              
+              if hrp then
+                  -- الـبـحـث عـن الـصـنـاديـق فـي الـمـاب
+                  for _, v in pairs(workspace:GetDescendants()) do
+                      if v:IsA("Part") and (v.Name:lower():find("block") or v.Name:lower():find("lucky")) then
+                          -- الانـتـقـال أمـام الـصـنـدوق مـبـاشـرة
+                          hrp.CFrame = v.CFrame * CFrame.new(0, 0, 3)
+                          
+                          -- مـحـاكـاة الـضـرب أو الـركـل
+                          VirtualUser:CaptureController()
+                          VirtualUser:ClickButton1(Vector2.new(0,0))
+                          task.wait(0.2) -- انـتـظـار بـسـيـط بـيـن كـل ركـلـة لـتـجـنـب الـخـطـأ
+                          break 
+                      end
+                  end
               end
           end
       end)
@@ -76,7 +115,7 @@ PlayerTab:CreateSlider({
 -- تـنـبـيـه بـأن الـكـود مـسـتـعـد
 Rayfield:Notify({
    Title = "اكتمل الـحـقـن",
-   Content = "جـاهـز سـيـدي الـمـطـور، تـم تـجـهـيـز الـأدوات 🔥",
+   Content = "جـاهـز سـيـدي الـمـطـور، تـم تـجـهـيـز الـأدوات مـع حـل الـمـشـاكـل 🔥",
    Duration = 5,
    Image = 4483345998,
 })
