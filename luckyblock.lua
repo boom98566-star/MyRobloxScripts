@@ -1,5 +1,7 @@
+-- تـحـمـيـل مـكـتـبـات الـنـظـام
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
-local VirtualUser = game:GetService("VirtualUser")
+local VirtualInputManager = game:GetService("VirtualInputManager")
+local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 
@@ -8,54 +10,49 @@ local Window = Rayfield:CreateWindow({
    Name = "The Architect Hub | Kick a Lucky Block 🔥",
    LoadingTitle = "جـاري حـقـن الـسـكـريـبـت...",
    LoadingSubtitle = "تـم الـتـطـويـر بـواسـطـة The Architect",
-   ConfigurationSaving = {
-      Enabled = false 
-   },
-   Discord = {
-      Enabled = false,
-      Invite = "noinvitelink",
-      RememberJoins = true
-   },
+   ConfigurationSaving = { Enabled = false },
+   Discord = { Enabled = false, Invite = "no", RememberJoins = true },
    KeySystem = false
 })
 
 local MainTab = Window:CreateTab("الـتـلـقـائـيـات", 4483345998)
-local SettingsTab = Window:CreateTab("إعـدادات الـتـوقـيـت (هـام)", 4483345998)
+local SettingsTab = Window:CreateTab("إعـدادات الـتـوقـيـت والـسـرعـة", 4483345998)
 
 _G.AutoTrain = false
 _G.TrainDelay = 1.5
 
 _G.AutoKick = false
-_G.KickCharge = 1.2
+_G.MeterDelay = 0.5 -- وقـت حـركـة الـمـؤشـر لـلـوصـول لـلـقـسـم الـمـمـتـاز
 _G.PetWait = 4.0
+_G.TweenSpeed = 60 -- سـرعـة الـانـتـقـال الـسـلـس لـحـمـايـة الـحـيـوان
 
 -- ==========================================
--- إعـدادات الـتـوقـيـت
+-- إعـدادات الـتـوقـيـت والـسـرعـة
 -- ==========================================
 SettingsTab:CreateSlider({
-   Name = "وقـت انـتـظـار نـزلـة الـتـدريـب ⏱️",
-   Range = {0.5, 4.0},
-   Increment = 0.1,
-   CurrentValue = 1.5,
-   Flag = "TrainDelaySlider",
+   Name = "سـرعـة الـانـتـقـال (لـحـمـايـة الـحـيـوان) 🏃",
+   Range = {20, 150},
+   Increment = 5,
+   CurrentValue = 60,
+   Flag = "TweenSpeedSlider",
    Callback = function(Value)
-      _G.TrainDelay = Value
+      _G.TweenSpeed = Value
    end,
 })
 
 SettingsTab:CreateSlider({
-   Name = "مـدة شـحـن الـركـلـة ⚡",
-   Range = {0.1, 3.0},
+   Name = "تـوقـيـت إيـقـاف الـمـؤشـر (لـركـلـة مـمـتـازة) 🎯",
+   Range = {0.1, 2.0},
    Increment = 0.1,
-   CurrentValue = 1.2,
-   Flag = "KickChargeSlider",
+   CurrentValue = 0.5,
+   Flag = "MeterDelaySlider",
    Callback = function(Value)
-      _G.KickCharge = Value
+      _G.MeterDelay = Value
    end,
 })
 
 SettingsTab:CreateSlider({
-   Name = "وقـت انـتـظـار الـحـيـوان 🐾",
+   Name = "وقـت انـتـظـار جـمـع الـحـيـوان 🐾",
    Range = {1.0, 10.0},
    Increment = 0.5,
    CurrentValue = 4.0,
@@ -69,7 +66,7 @@ SettingsTab:CreateSlider({
 -- قـسـم الـتـلـقـائـيـات
 -- ==========================================
 MainTab:CreateToggle({
-   Name = "تـدريـب تـلـقـائـي (نـزلـة كـامـلـة) 💪",
+   Name = "تـدريـب تـلـقـائـي 💪",
    CurrentValue = false,
    Flag = "AutoTrainToggle",
    Callback = function(Value)
@@ -82,11 +79,11 @@ MainTab:CreateToggle({
                   
                   if tool then
                       char.Humanoid:EquipTool(tool)
-                      VirtualUser:CaptureController()
-                      VirtualUser:ClickButton1(Vector2.new(0,0))
+                      VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+                      task.wait(0.05)
+                      VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
                   end
               end)
-              -- الانـتـظـار بـنـاءً عـلـى إعـداداتـك
               task.wait(_G.TrainDelay)
           end
       end)
@@ -94,7 +91,7 @@ MainTab:CreateToggle({
 })
 
 MainTab:CreateToggle({
-   Name = "تـجـمـيـع وركـل (شـحـن + انـتـظـار) ⚽",
+   Name = "تـجـمـيـع وركـل (انـتـقـال سـلـس + مـؤشـر مـمـتـاز) ⚽",
    CurrentValue = false,
    Flag = "AutoKickToggle",
    Callback = function(Value)
@@ -111,17 +108,32 @@ MainTab:CreateToggle({
                           if v:IsA("Part") and (v.Name:lower():find("block") or v.Name:lower():find("lucky") or v.Name:lower():find("kick")) then
                               foundBlock = true
                               
-                              -- الانـتـقـال والاسـتـقـرار أمـام الـصـنـدوق
-                              hrp.CFrame = v.CFrame * CFrame.new(0, 0, 4)
-                              task.wait(0.5) 
+                              -- 1. الـانـتـقـال الـسـلـس (لـا يـوجـد انـتـقـال مـفـاجـئ لـحـمـايـة الـحـيـوان)
+                              local distance = (hrp.Position - v.Position).Magnitude
+                              local timeToTravel = distance / _G.TweenSpeed
+                              local tweenInfo = TweenInfo.new(timeToTravel, Enum.EasingStyle.Linear)
+                              local targetCFrame = v.CFrame * CFrame.new(0, 0, 4)
+                              local tween = TweenService:Create(hrp, tweenInfo, {CFrame = targetCFrame})
                               
-                              -- عـمـلـيـة الـشـحـن (ضـغـط مـسـتـمـر ثـم إفـلات)
-                              VirtualUser:CaptureController()
-                              VirtualUser:Button1Down(Vector2.new(0,0))
-                              task.wait(_G.KickCharge) 
-                              VirtualUser:Button1Up(Vector2.new(0,0))
+                              tween:Play()
+                              tween.Completed:Wait() -- انـتـظـار حـتـى يـصـل الـلـاعـب بـسـلـام
+                              task.wait(0.5) -- اسـتـقـرار لـلـحـيـوان
                               
-                              -- انـتـظـار الـحـيـوان
+                              -- 2. عـمـلـيـة الـمـؤشـر (ضـغـطـة لـلـبـدء ثـم ضـغـطـة لـلـإيـقـاف)
+                              -- الـضـغـطـة الـأولـى
+                              VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+                              task.wait(0.05)
+                              VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+                              
+                              -- انـتـظـار حـتـى يـصـل الـمـؤشـر لـلـمـنـطـقـة الـمـمـتـازة
+                              task.wait(_G.MeterDelay)
+                              
+                              -- الـضـغـطـة الـثـانـيـة لـإيـقـاف الـمـؤشـر
+                              VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
+                              task.wait(0.05)
+                              VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
+                              
+                              -- 3. انـتـظـار الـحـيـوان لـيـجـمـع بـدون خـطـأ
                               task.wait(_G.PetWait) 
                               break 
                           end
@@ -137,10 +149,9 @@ MainTab:CreateToggle({
    end,
 })
 
--- تـنـبـيـه نـهـائـي
 Rayfield:Notify({
    Title = "اكتمل الـحـقـن",
-   Content = "تـم تـحـسـيـن مـحـرك الـلـمـس لـيـعـمـل مـع الـمـوبـايـل بـكـفـاءة 🔥",
+   Content = "تـم تـفـعـيـل الـانـتـقـال الـسـلـس ونـظـام الـمـؤشـر لـحـل كـل الـمـشـاكـل 🔥",
    Duration = 5,
    Image = 4483345998,
 })
