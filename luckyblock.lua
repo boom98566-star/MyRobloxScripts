@@ -1,40 +1,82 @@
--- تـنـبـيـه بـدء الـتـشـغـيـل
-print("جـاهـز سـيـدي الـمـطـور.. جـاري تـشـغـيـل الـنـسـخـة الـمـسـتـقـرة 🔥")
+-- تـحـمـيـل مـكـتـبـة Rayfield الأقـوى لـلـمـوبـايـل
+local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 
-local Players = game:GetService("Players")
-local LocalPlayer = Players.LocalPlayer
-local Character = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+-- إنـشـاء الـنـافـذة الـرئـيـسـيـة
+local Window = Rayfield:CreateWindow({
+   Name = "The Architect Hub | Kick a Lucky Block 🔥",
+   LoadingTitle = "جـاري حـقـن الـسـكـريـبـت...",
+   LoadingSubtitle = "تـم الـتـطـويـر بـواسـطـة The Architect",
+   ConfigurationSaving = {
+      Enabled = true,
+      FolderName = "ArchitectScripts",
+      FileName = "KickLuckyBlock"
+   },
+   Discord = {
+      Enabled = false,
+      Invite = "noinvitelink",
+      RememberJoins = true
+   },
+   KeySystem = false
+})
 
--- دالـة سـحـب جـمـيـع الـصـنـاديـق لـمـكـانـك
-local function collectBlocks()
-    for _, block in pairs(workspace:GetDescendants()) do
-        if block:IsA("TouchTransmitter") and block.Parent.Name:find("Lucky") then
-            firetouchinterest(Character.HumanoidRootPart, block.Parent, 0)
-            firetouchinterest(Character.HumanoidRootPart, block.Parent, 1)
-        end
-    end
-end
+-- تـقـسـيـم الـأقـسـام
+local MainTab = Window:CreateTab("الـتـلـقـائـيـات", 4483345998)
+local PlayerTab = Window:CreateTab("إعـدادات الـلـاعـب", 4483345998)
 
--- تـشـغـيـل الـسـرعـة والـقـفـز تـلـقـائـيـاً لـلـتـأكـد مـن الـعـمـل
-Character.Humanoid.WalkSpeed = 100
-Character.Humanoid.JumpPower = 150
+-- مـتـغـيـرات الـتـشـغـيـل
+_G.AutoTrain = false
 
--- تـشـغـيـل الـسـحـب فـوراً
-collectBlocks()
+-- مـيـزة الـتـدريـب الـتـلـقـائـي (لـزيـادة قـوة الـركـل)
+MainTab:CreateToggle({
+   Name = "تـدريـب تـلـقـائـي (Auto Lift Weights) 💪",
+   CurrentValue = false,
+   Flag = "AutoTrainToggle",
+   Callback = function(Value)
+      _G.AutoTrain = Value
+      task.spawn(function()
+          while _G.AutoTrain do
+              task.wait(0.1)
+              local player = game.Players.LocalPlayer
+              local char = player.Character or player.CharacterAdded:Wait()
+              -- الـبـحـث عـن أداة الـتـدريـب فـي الـحـقـيـبـة أو يـد الـلـاعـب
+              local tool = char:FindFirstChildOfClass("Tool") or player.Backpack:FindFirstChildOfClass("Tool")
+              if tool then
+                  char.Humanoid:EquipTool(tool)
+                  tool:Activate()
+              end
+          end
+      end)
+   end,
+})
 
--- إنـشـاء واجـهـة بـسـيـطـة جـداً (ScreenGui) لـتـفـادي مـشـاكـل الـمـكـتـبـات
-local ScreenGui = Instance.new("ScreenGui")
-local Button = Instance.new("TextButton")
+-- مـيـزة الـسـرعـة الـخـارقـة
+PlayerTab:CreateSlider({
+   Name = "سـرعـة الـمـشـي (WalkSpeed) ⚡",
+   Range = {16, 250},
+   Increment = 1,
+   CurrentValue = 16,
+   Flag = "SpeedSlider",
+   Callback = function(Value)
+      game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = Value
+   end,
+})
 
-ScreenGui.Parent = game.CoreGui
-Button.Parent = ScreenGui
-Button.Size = UDim2.new(0, 150, 0, 50)
-Button.Position = UDim2.new(0.5, -75, 0.1, 0)
-Button.Text = "سـحـب الـصـنـاديـق 🔥"
-Button.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-Button.TextColor3 = Color3.fromRGB(255, 255, 255)
+-- مـيـزة قـوة الـقـفـز
+PlayerTab:CreateSlider({
+   Name = "قـوة الـقـفـز (JumpPower) 🦘",
+   Range = {50, 300},
+   Increment = 1,
+   CurrentValue = 50,
+   Flag = "JumpSlider",
+   Callback = function(Value)
+      game.Players.LocalPlayer.Character.Humanoid.JumpPower = Value
+   end,
+})
 
-Button.MouseButton1Click:Connect(function()
-    collectBlocks()
-    print("تـم الـسـحـب!")
-end)
+-- تـنـبـيـه بـأن الـكـود مـسـتـعـد
+Rayfield:Notify({
+   Title = "اكتمل الـحـقـن",
+   Content = "جـاهـز سـيـدي الـمـطـور، تـم تـجـهـيـز الـأدوات 🔥",
+   Duration = 5,
+   Image = 4483345998,
+})
