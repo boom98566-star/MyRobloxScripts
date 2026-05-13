@@ -1,6 +1,8 @@
 -- تـحـمـيـل مـكـتـبـة Rayfield
 local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
 local VirtualInputManager = game:GetService("VirtualInputManager")
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
 
 -- إنـشـاء الـنـافـذة الـرئـيـسـيـة
 local Window = Rayfield:CreateWindow({
@@ -19,12 +21,54 @@ local Window = Rayfield:CreateWindow({
 })
 
 local MainTab = Window:CreateTab("الـتـلـقـائـيـات", 4483345998)
-local PlayerTab = Window:CreateTab("إعـدادات الـلـاعـب", 4483345998)
+local SettingsTab = Window:CreateTab("إعـدادات الـتـوقـيـت (هـام)", 4483345998)
 
 _G.AutoTrain = false
-_G.AutoKick = false
+_G.TrainDelay = 1.5
 
--- مـيـزة الـتـدريـب الـمـعـدلـة (نـزلـة كـامـلـة لـضـمـان الاحـتـسـاب)
+_G.AutoKick = false
+_G.KickCharge = 1.2
+_G.PetWait = 4.0
+
+-- ==========================================
+-- إعـدادات الـتـوقـيـت (لـحـل مـشـاكـل الـسـرعـة)
+-- ==========================================
+SettingsTab:CreateSlider({
+   Name = "وقـت انـتـظـار نـزلـة الـتـدريـب (بـالـثـانـيـة) ⏱️",
+   Range = {0.5, 4.0},
+   Increment = 0.1,
+   CurrentValue = 1.5,
+   Flag = "TrainDelaySlider",
+   Callback = function(Value)
+      _G.TrainDelay = Value
+   end,
+})
+
+SettingsTab:CreateSlider({
+   Name = "مـدة شـحـن الـركـلـة (لـتـصـبـح مـمـتـازة) ⚡",
+   Range = {0.1, 3.0},
+   Increment = 0.1,
+   CurrentValue = 1.2,
+   Flag = "KickChargeSlider",
+   Callback = function(Value)
+      _G.KickCharge = Value
+   end,
+})
+
+SettingsTab:CreateSlider({
+   Name = "وقـت انـتـظـار عـودة الـحـيـوان (الـبـت) 🐾",
+   Range = {1.0, 10.0},
+   Increment = 0.5,
+   CurrentValue = 4.0,
+   Flag = "PetWaitSlider",
+   Callback = function(Value)
+      _G.PetWait = Value
+   end,
+})
+
+-- ==========================================
+-- قـسـم الـتـلـقـائـيـات
+-- ==========================================
 MainTab:CreateToggle({
    Name = "تـدريـب تـلـقـائـي (نـزلـة كـامـلـة) 💪",
    CurrentValue = false,
@@ -33,29 +77,26 @@ MainTab:CreateToggle({
       _G.AutoTrain = Value
       task.spawn(function()
           while _G.AutoTrain do
-              local player = game.Players.LocalPlayer
-              local char = player.Character or player.CharacterAdded:Wait()
-              local tool = char:FindFirstChildOfClass("Tool") or player.Backpack:FindFirstChildOfClass("Tool")
+              local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
+              local tool = char:FindFirstChildOfClass("Tool") or LocalPlayer.Backpack:FindFirstChildOfClass("Tool")
               
               if tool then
                   char.Humanoid:EquipTool(tool)
-                  tool:Activate()
-                  
+                  -- مـحـاكـاة ضـغـطـة سـريـعـة لـلـبـدء
                   VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
-                  task.wait(0.1)
+                  task.wait(0.05)
                   VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
                   
-                  -- انـتـظـار ثـانـيـة ونـصـف لـيـكـمـل الـلـاعـب نـزلـة الـتـدريـب الـكـامـلـة
-                  task.wait(1.5)
+                  -- الـانـتـظـار حـتـى تـكـتـمـل حـركـة الـتـدريـب بـنـاءً عـلـى الـإعـدادات
+                  task.wait(_G.TrainDelay)
               else
-                  task.wait(0.5)
+                  task.wait(1)
               end
           end
       end)
    end,
 })
 
--- مـيـزة الـتـجـمـيـع الـمـعـدلـة (شـحـن الـركـلـة وانـتـظـار الـحـيـوان)
 MainTab:CreateToggle({
    Name = "تـجـمـيـع وركـل (قـوي + انـتـظـار) ⚽",
    CurrentValue = false,
@@ -64,8 +105,7 @@ MainTab:CreateToggle({
       _G.AutoKick = Value
       task.spawn(function()
           while _G.AutoKick do
-              local player = game.Players.LocalPlayer
-              local char = player.Character or player.CharacterAdded:Wait()
+              local char = LocalPlayer.Character or LocalPlayer.CharacterAdded:Wait()
               local hrp = char:FindFirstChild("HumanoidRootPart")
               
               if hrp then
@@ -74,17 +114,17 @@ MainTab:CreateToggle({
                       if v:IsA("Part") and (v.Name:lower():find("block") or v.Name:lower():find("lucky") or v.Name:lower():find("kick")) then
                           foundBlock = true
                           
-                          -- الانـتـقـال أمـام الـصـنـدوق بـمـسـافـة مـنـاسـبـة
+                          -- الـوقـوف أمـام الـصـنـدوق
                           hrp.CFrame = v.CFrame * CFrame.new(0, 0, 4)
-                          task.wait(0.5) -- انـتـظـار لـلاسـتـقـرار
+                          task.wait(0.5) 
                           
-                          -- شـحـن الـركـلـة (الـاسـتـمـرار بـالـضـغـط لـمـدة 1.2 ثـانـيـة לـتـصـبـح قـويـة أو مـمـتـازة)
+                          -- شـحـن الـركـلـة بـنـاءً عـلـى الـمـدة فـي الـإعـدادات
                           VirtualInputManager:SendMouseButtonEvent(0, 0, 0, true, game, 1)
-                          task.wait(1.2) 
+                          task.wait(_G.KickCharge) 
                           VirtualInputManager:SendMouseButtonEvent(0, 0, 0, false, game, 1)
                           
-                          -- انـتـظـار 3 ثـوانٍ حـتـى يـذهـب الـحـيـوان ويـجـمـع الـمـكـافـآت ويـعـود
-                          task.wait(3) 
+                          -- انـتـظـار الـحـيـوان لـيـجـمـع الـمـكـافـآت
+                          task.wait(_G.PetWait) 
                           break 
                       end
                   end
@@ -99,58 +139,9 @@ MainTab:CreateToggle({
    end,
 })
 
-PlayerTab:CreateSlider({
-   Name = "سـرعـة الـمـشـي ⚡",
-   Range = {16, 250},
-   Increment = 1,
-   CurrentValue = 16,
-   Flag = "SpeedSlider",
-   Callback = function(Value)
-      game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = Value
-   end,
-})
-
-PlayerTab:CreateSlider({
-   Name = "قـوة الـقـفـز 🦘",
-   Range = {50, 300},
-   Increment = 1,
-   CurrentValue = 50,
-   Flag = "JumpSlider",
-   Callback = function(Value)
-      game.Players.LocalPlayer.Character.Humanoid.JumpPower = Value
-   end,
-})
-
--- تـنـبـيـه اكـتـمـال الـحـقـن
 Rayfield:Notify({
    Title = "اكتمل الـحـقـن",
-   Content = "تـم تـعـديـل نـظـام الـتـدريـب وشـحـن الـركـلـة مـع انـتـظـار الـحـيـوان 🔥",
-   Duration = 5,
-   Image = 4483345998,
-})
-
-Rayfield:LoadConfiguration()
-   Flag = "SpeedSlider",
-   Callback = function(Value)
-      game.Players.LocalPlayer.Character.Humanoid.WalkSpeed = Value
-   end,
-})
-
-PlayerTab:CreateSlider({
-   Name = "قـوة الـقـفـز 🦘",
-   Range = {50, 300},
-   Increment = 1,
-   CurrentValue = 50,
-   Flag = "JumpSlider",
-   Callback = function(Value)
-      game.Players.LocalPlayer.Character.Humanoid.JumpPower = Value
-   end,
-})
-
--- تـنـبـيـه نـهـائـي وتـجـهـيـز الـواجـهـة
-Rayfield:Notify({
-   Title = "اكتمل الـحـقـن",
-   Content = "جـاهـز سـيـدي الـمـطـور، تـم تـجـهـيـز الـأدوات مـع حـل الـمـشـاكـل 🔥",
+   Content = "تـم إضـافـة إعـدادات الـتـوقـيـت لـلـتـحـكـم الـكـامـل 🔥",
    Duration = 5,
    Image = 4483345998,
 })
